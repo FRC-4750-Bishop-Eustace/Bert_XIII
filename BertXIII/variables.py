@@ -29,10 +29,10 @@ turnFF_2 = 0 #0.45
 elevatorPID_P = 5
 elevatorPID_I = 0
 elevatorPID_D = 0 # Dampening for oscillation
-elevatorFF_1 = 0.06 # kS: Static friction compensation
-elevatorFF_2 = 0.17 # kG: Gravity compensation
-elevatorFF_3 = 0.3#0.34527 # kV: Velocity feedforward
-elevatorFF_4 = 0.005 # kA: Acceleration feedforward
+elevatorFF_1 = 0.06#0.24#0.06 # kS: Static friction compensation
+elevatorFF_2 = 0.17#0.34 # kG: Gravity compensation
+elevatorFF_3 = 0.1#0.3#0.34527 # kV: Velocity feedforward
+elevatorFF_4 = 0.005#0.005 # kA: Acceleration feedforward
 
 
 TurnState = 0

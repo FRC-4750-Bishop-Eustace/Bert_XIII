@@ -20,6 +20,7 @@ import navxGyro
 import ntcore
 #import limelight
 #import limelightresults
+import commands2
 import LimelightHelpers
 import json
 import time
@@ -32,11 +33,15 @@ from wpilib import SmartDashboard, Field2d
 from cscore import CameraServer
 from wpilib import SmartDashboard
 import choreo
-# import urcl
+import coral_claw
+import climb
+from urcl import URCL
 
-class MyRobot(wpilib.TimedRobot):
+class MyRobot(commands2.TimedCommandRobot):
     def robotInit(self) -> None:
         """Robot initialization function"""
+        wpilib.DataLogManager.start()
+        URCL.start()
         self.controller = wpilib.Joystick(variables.joystickPort1)
         self.controller2 = wpilib.Joystick(variables.joystickPort2)
         self.pad = wpilib.Joystick(variables.joystickPort3)
@@ -47,6 +52,8 @@ class MyRobot(wpilib.TimedRobot):
         self.elevator = elevator.Elevator(16, 17, [5, 10, 20, 30])
         #self.elevator2 = elevator2.Elevator(16, 17, [5, 10, 20, 30])
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
+        self.claw = coral_claw.Coral_claw(20, 18)
+        self.climb = climb.Climber(15, 19)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
         self.navxGyro = navxGyro.Gyro()
@@ -61,6 +68,8 @@ class MyRobot(wpilib.TimedRobot):
         self.timer = wpilib.Timer()
         self.fieldDrive = 1
         #CameraServer.startAutomaticCapture()
+
+        self.setpoint = 0
         
         self.inst = ntcore.NetworkTableInstance.getDefault()
         self.lmtable = self.inst.getTable("limelight")
@@ -93,13 +102,26 @@ class MyRobot(wpilib.TimedRobot):
     def autonomousInit(self):
         self.swerve.resetGyro()
 
+        follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
+        follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
+        stop = commands2.cmd.run(lambda: self.StopPath())
+        
         if self.trajectory:
             # Get the initial pose of the trajectory
             initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
 
+            self.swerve.resetRobotPose(initial_pose)
+
             if initial_pose:
                 # Reset odometry to the start of the trajectory
                 self.swerve.updateOdometry()
+
+        self.path_command = commands2.SequentialCommandGroup([
+            follow1,
+            follow2,
+            stop
+        ])
+        self.path_command.schedule()
 
         # Reset and start the timer when the autonomous period begins
         self.timer.restart()
@@ -109,16 +131,12 @@ class MyRobot(wpilib.TimedRobot):
 
     def autonomousPeriodic(self) -> None:
 
+        self.matchTimer = self.timer.getMatchTime()
+
         self.field.setRobotPose(self.swerve.odometry.getPose())
 
-        if self.trajectory:
-            # Sample the trajectory at the current time into the autonomous period
-            sample = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
-
-            if sample:
-                self.swerve.follow_trajectory(sample)
+        commands2.CommandScheduler.getInstance().run()
                 
-
 
     def is_red_alliance(self):
         return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
@@ -133,6 +151,8 @@ class MyRobot(wpilib.TimedRobot):
         #self.swerve.updateOdometry()
         #self.field.setRobotPose(self.swerve.odometry.getPose())
 
+        self.matchTimer = self.timer.getFPGATimestamp()
+
         self.tx = self.lmtable.getNumber('tx', None)
         self.ty = self.lmtable.getNumber('ty', None)
         self.ta = self.lmtable.getNumber('ta', None)
@@ -142,14 +162,19 @@ class MyRobot(wpilib.TimedRobot):
 
         self.botpose = self.lmtable.getEntry('botpose_wpiblue').getDoubleArray([])
 
+        #self.elevator.findPoints()
+
         #self.tagpose = self.botpose.toPose2d()
         #self.field.setRobotPose(self.botpose[0], self.botpose[1], self.botpose[2])
 
+        #if self.ta > 2.0:
+        #    self.swerve.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]-90), self.matchTimer)
         self.swerve.UpdateEstimator()
         #print(self.visionPose)
-        #self.swerve.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]), self.getPeriod())
         self.visionPose = self.swerve.estimator.getEstimatedPosition()
-        #self.field.setRobotPose(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]))
+        #rint(self.getPeriod())
+        #print(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]), self.matchTimer)
+        #print(self.visionPose)
         self.field.setRobotPose(self.visionPose)
         
 
@@ -169,18 +194,46 @@ class MyRobot(wpilib.TimedRobot):
     
         self.navxGyro.getGyro()
         
-        if self.pad.getRawButton(6) == 1: #down
-            self.elevator.start_elevatorMotor(3)
-        elif self.pad.getRawButton(9) == 1: #up
-            self.elevator.start_elevatorMotor(8)
-        else:
-            self.elevator.stop_elevatorMotor()
         
-        #self.voltage = SmartDashboard.getNumber('voltage', 1)
+        # MAX SET POINT IS AROUND 22.5
+        if self.pad.getRawButton(6) == 1: #down
+            self.setpoint = 3
+            self.elevator.start_elevatorMotor(self.setpoint)
+        elif self.pad.getRawButton(9) == 1: #up
+            self.setpoint = 8
+            self.elevator.start_elevatorMotor(self.setpoint)
+        else:
+            self.elevator.start_elevatorMotor(self.setpoint)
+        
+
+        self.voltage = SmartDashboard.getNumber('voltage', 1)
+
+        # FOR CLAW
+        if self.pad.getRawButton(5) == 1: # up
+            self.claw.jointMotor_up(self.voltage)
+        elif self.pad.getRawButton(3) == 1:
+            self.claw.jointMotor_down(self.voltage)
+        else:
+            self.claw.jointMotor_stop()
+        
+        if self.pad.getRawButton(2) == 1:
+            self.claw.intakeMotor_intaking(self.voltage)
+        elif self.pad.getRawButton(1) == 1:
+            self.claw.intakeMotor_release(self.voltage)
+        else:
+            self.claw.intakeMotor_stop()
+
+        if self.pad.getRawButton(7):
+            self.climb.move(self.voltage)
+        elif self.pad.getRawButton(10):
+            self.climb.move(-self.voltage)
+        else:
+            self.climb.stop()
+        
         '''
-        if self.pad.getRawButton(2) == 1: #down
+        if self.pad.getRawButton(6) == 1: #down
             self.elevator2.start_elevatorMotor(-self.voltage)
-        elif self.pad.getRawButton(4) == 1: #up
+        elif self.pad.getRawButton(9) == 1: #up
             self.elevator2.start_elevatorMotor(self.voltage)
         else:
             self.elevator2.stop_elevatorMotor()
@@ -194,8 +247,10 @@ class MyRobot(wpilib.TimedRobot):
         #if fieldRelative:
         #    self.swerve.updateOdometry()
 
+        self.dPad = self.controller.getPOV()
+
         xSpeed = (
-            self.xspeedLimiter.calculate(
+            -self.xspeedLimiter.calculate(
                 wpimath.applyDeadband(self.controller.getRawAxis(1), variables.x_deadband)
             )
             * variables.kMaxSpeed
@@ -206,7 +261,7 @@ class MyRobot(wpilib.TimedRobot):
         # return positive values when you pull to the right by default.
         # NOTE: Check if we need inversion here
         ySpeed = (
-            self.yspeedLimiter.calculate(
+            -self.yspeedLimiter.calculate(
                 wpimath.applyDeadband(self.controller.getRawAxis(0), variables.y_deadband)
             )
             * variables.kTMaxSpeed
@@ -231,9 +286,9 @@ class MyRobot(wpilib.TimedRobot):
         '''
         rot = (
             (self.rotLimiter.calculate(
-                -wpimath.applyDeadband((self.controller.getRawAxis(3) + 1) / 2, variables.rot_deadband)
+                wpimath.applyDeadband((self.controller.getRawAxis(3) + 1) / 2, variables.rot_deadband)
             ) +
-                wpimath.applyDeadband((self.controller.getRawAxis(4) + 1) / 2, variables.rot_deadband)
+                -wpimath.applyDeadband((self.controller.getRawAxis(4) + 1) / 2, variables.rot_deadband)
             )
             * variables.kRMaxSpeed)
 
@@ -245,10 +300,33 @@ class MyRobot(wpilib.TimedRobot):
             * variables.kRMaxSpeed
         )
         '''
+
+        if self.dPad == 0:
+            xSpeed = 0.2
+        if self.dPad == 90:
+            ySpeed = -0.2
+        
+        if self.dPad == 180:
+            xSpeed = -0.2
+        if self.dPad == 270:
+            ySpeed = 0.2
+        
+        if self.controller.getRawButton(variables.L1Button) == 1:
+            rot = 0.5
+        if self.controller.getRawButton(variables.R1Button) == 1:
+            rot = -0.5
+    
         variables.setTurnState(rot)
 
         #self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
         self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
     
+    def FollowChoreoPath(self, trajectory):
+        sample = trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
+        if sample:
+            self.swerve.follow_trajectory(sample)
+    
+    def StopPath(self):
+        self.swerve.drive(0, 0, 0, True, self.getPeriod())
         

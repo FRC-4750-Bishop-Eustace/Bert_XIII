@@ -53,6 +53,11 @@ class Elevator:
 
         SmartDashboard.putData("ElevatorPID", self.elevatorPIDController)
 
+    def findPoints(self):
+        encoderRotation = self.elevatorEncoder1.getPosition()
+
+        SmartDashboard.putNumber("encoderRotation", self.elevatorEncoder1.getPosition())
+        SmartDashboard.putNumber("setpoint", self.elevatorPIDController.getSetpoint().position)
 
     def start_elevatorMotor(self, setpoint: float):
         encoderRotation = self.elevatorEncoder1.getPosition()

@@ -218,7 +218,7 @@ class Drivetrain:
         swerveModuleStates = self.kinematics.toSwerveModuleStates(
             wpimath.kinematics.ChassisSpeeds.discretize(
                 wpimath.kinematics.ChassisSpeeds.fromFieldRelativeSpeeds(
-                    xSpeed, ySpeed, -rot, wpimath.geometry.Rotation2d(self.gyroradians)
+                    xSpeed, ySpeed, rot, wpimath.geometry.Rotation2d(-self.gyroradians)
                 )
                 if fieldRelative
                 else wpimath.kinematics.ChassisSpeeds(xSpeed, ySpeed, rot),
