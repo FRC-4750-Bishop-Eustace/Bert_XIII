@@ -102,9 +102,9 @@ class MyRobot(commands2.TimedCommandRobot):
     def autonomousInit(self):
         self.swerve.resetGyro()
 
-        # follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
-        # follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
         follow1 = commands2.cmd.run(lambda: self.sequence1())
+        # preload = commands2.cmd.run(lambda: ...) # Set claw to outtake preload
+        follow2 = commands2.cmd.run(lambda: lambda: self.FollowChoreoPath(choreo.load_swerve_trajectory("Auto-Pt-2"))).withTimeout(1.3)
         stop = commands2.cmd.run(lambda: self.StopPath())
         
         if self.trajectory:
@@ -119,7 +119,8 @@ class MyRobot(commands2.TimedCommandRobot):
 
         self.path_command = commands2.SequentialCommandGroup([
             follow1,
-            # follow2,
+            # preload,
+            follow2,
             stop
         ])
         self.path_command.schedule()
@@ -332,22 +333,13 @@ class MyRobot(commands2.TimedCommandRobot):
         self.swerve.drive(0, 0, 0, True, self.getPeriod())
         
     def sequence1(self):
-        follow = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
+        follow = commands2.cmd.run(lambda: self.FollowChoreoPath(choreo.load_swerve_trajectory("Auto-Pt-1"))).withTimeout(1.2)
+        elev = commands2.cmd.run(lambda: self.elevator.set_elevatorMode(2)) # Set elevator to L2
         stop = commands2.cmd.run(lambda: self.StopPath())
 
-        if self.trajectory:
-            # Get the initial pose of the trajectory
-            initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
-
-            self.swerve.resetRobotPose(initial_pose)
-
-            if initial_pose:
-                # Reset odometry to the start of the trajectory
-                self.swerve.updateOdometry()
-
         self.path_command = commands2.ParallelCommandGroup([
-            follow1,
-            # follow2,
+            follow,
+            elev,
             stop
         ])
         self.path_command.schedule()

@@ -98,16 +98,12 @@ class Elevator:
         self.elevatorEncoder2.setPosition(-x)
     
     def set_elevatorMode(self, mode: int):
-        mode = max(4, min(mode, 0))
-        match mode:
-            case 0:
-                while self.elevatorEncoder.getPosition() > 0:
-                    self.start_elevatorMotor(0)
-            case 1:
-                self.start_elevatorMotor(self.heights[0])
-            case 2:
-                self.start_elevatorMotor(self.heights[1])
-            case 3:
-                self.start_elevatorMotor(self.heights[2])
-            case 4:
-                self.start_elevatorMotor(self.heights[3])
+        mode = max(4, min(mode, 1))
+        setpoints = {
+            0: 0,
+            1: self.heights[0],
+            2: self.heights[1],
+            3: self.heights[2],
+            4: self.heights[3]
+        }
+        self.start_elevatorMotor(setpoints.get(mode, 0))
