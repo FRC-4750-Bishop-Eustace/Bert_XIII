@@ -102,8 +102,9 @@ class MyRobot(commands2.TimedCommandRobot):
     def autonomousInit(self):
         self.swerve.resetGyro()
 
-        follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
-        follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
+        # follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
+        # follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
+        follow1 = commands2.cmd.run(lambda: self.sequence1())
         stop = commands2.cmd.run(lambda: self.StopPath())
         
         if self.trajectory:
@@ -118,7 +119,7 @@ class MyRobot(commands2.TimedCommandRobot):
 
         self.path_command = commands2.SequentialCommandGroup([
             follow1,
-            follow2,
+            # follow2,
             stop
         ])
         self.path_command.schedule()
@@ -330,3 +331,23 @@ class MyRobot(commands2.TimedCommandRobot):
     def StopPath(self):
         self.swerve.drive(0, 0, 0, True, self.getPeriod())
         
+    def sequence1(self):
+        follow = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
+        stop = commands2.cmd.run(lambda: self.StopPath())
+
+        if self.trajectory:
+            # Get the initial pose of the trajectory
+            initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
+
+            self.swerve.resetRobotPose(initial_pose)
+
+            if initial_pose:
+                # Reset odometry to the start of the trajectory
+                self.swerve.updateOdometry()
+
+        self.path_command = commands2.ParallelCommandGroup([
+            follow1,
+            # follow2,
+            stop
+        ])
+        self.path_command.schedule()
