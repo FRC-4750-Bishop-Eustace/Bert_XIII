@@ -2,7 +2,7 @@
 
 ## Discover all connected Limelights, and interact with them via REST and Websockets
 
-```
+```py
 import limelight
 import limelightresults
 import json

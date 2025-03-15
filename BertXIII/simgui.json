@@ -5,6 +5,8 @@
       "/SmartDashboard/A-PIDtune": "PIDController",
       "/SmartDashboard/A-PIDx": "PIDController",
       "/SmartDashboard/A-PIDy": "PIDController",
+      "/SmartDashboard/DrivePID": "PIDController",
+      "/SmartDashboard/ElevatorPID": "ProfiledPIDController",
       "/SmartDashboard/TurnPID": "ProfiledPIDController",
       "/SmartDashboard/field": "Field2d"
     }

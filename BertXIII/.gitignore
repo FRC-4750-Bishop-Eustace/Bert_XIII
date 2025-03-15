@@ -1,0 +1,5 @@
+# Compiled files
+__pycache__/
+logs/
+tests/
+=1.5
