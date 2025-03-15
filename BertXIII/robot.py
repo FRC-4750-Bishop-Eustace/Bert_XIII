@@ -103,8 +103,9 @@ class MyRobot(commands2.TimedCommandRobot):
         self.swerve.resetGyro()
 
         follow1 = commands2.cmd.run(lambda: self.sequence1())
-        # preload = commands2.cmd.run(lambda: ...) # Set claw to outtake preload
-        follow2 = commands2.cmd.run(lambda: lambda: self.FollowChoreoPath(choreo.load_swerve_trajectory("Auto-Pt-2"))).withTimeout(1.3)
+        preload = commands2.cmd.run(lambda: self.claw.intakeMotor_release(3)) # Set claw to outtake preload
+        follow2 = commands2.cmd.run(lambda: self.sequence2())
+        
         stop = commands2.cmd.run(lambda: self.StopPath())
         
         if self.trajectory:
@@ -119,7 +120,7 @@ class MyRobot(commands2.TimedCommandRobot):
 
         self.path_command = commands2.SequentialCommandGroup([
             follow1,
-            # preload,
+            preload,
             follow2,
             stop
         ])
@@ -340,6 +341,21 @@ class MyRobot(commands2.TimedCommandRobot):
         self.path_command = commands2.ParallelCommandGroup([
             follow,
             elev,
+            preload,
+            stop
+        ])
+        self.path_command.schedule()
+
+    def sequence2(self):
+        follow = commands2.cmd.run(lambda: self.FollowChoreoPath(choreo.load_swerve_trajectory("Auto-Pt-2"))).withTimeout(1.2)
+        elev = commands2.cmd.run(lambda: self.elevator.set_elevatorMode(0)) # Set elevator to L2
+        preload = commands2.cmd.run(lambda: self.claw.intakeMotor_intake(3))
+        stop = commands2.cmd.run(lambda: self.StopPath())
+
+        self.path_command = commands2.ParallelCommandGroup([
+            follow,
+            elev,
+            preload,
             stop
         ])
         self.path_command.schedule()
