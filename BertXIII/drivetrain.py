@@ -131,10 +131,12 @@ class Drivetrain:
             ),
         )
 
-        self.x_controller2 = wpimath.controller.PIDController(0.02, 0, 0.001)
-        self.y_controller2 = wpimath.controller.PIDController(0.02, 0, 0.001)
+        self.x_controller2 = wpimath.controller.PIDController(0.4, 0, 0.001)
+        self.y_controller2 = wpimath.controller.PIDController(0.4, 0, 0.001)
         self.heading_controller2 = wpimath.controller.PIDController(1, 0, 0)
 
+        self.heading_controller2.enableContinuousInput(-math.pi, math.pi)
+        
         #SmartDashboard.putData("A-PIDx", self.x_controller2)
         #SmartDashboard.putData("A-PIDy", self.y_controller2)
         #SmartDashboard.putData("A-PIDtune", self.heading_controller2)
@@ -303,11 +305,8 @@ class Drivetrain:
         )
 
         # Apply the generated speeds
-        self.drive(speeds[0], speeds[1], 0, True, self.period)
-        print("pose =", self.pose)
-        print("0 =", speeds[0])
-        print("1 =", speeds[1])
-        print("2 =", speeds[2])
+        self.drive(speeds[0], speeds[1], speeds[2], True, self.period)
+        
 
     def resetRobotPose(self, pose):
         self.odometry.resetPosition(
@@ -318,7 +317,8 @@ class Drivetrain:
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
             ], 
-            Pose2d(0,0,0)
+            #Pose2d(0,0,0)
+            pose
             )
     
     def resetGyro(self):

@@ -49,11 +49,11 @@ class MyRobot(commands2.TimedCommandRobot):
         self.swerve = drivetrain.Drivetrain()
         #self.odometry = 
 
-        self.elevator = elevator.Elevator(16, 17, [5, 10, 20, 30])
+        self.elevator = elevator.Elevator(variables.elevatorMotor1, variables.elevatorMotor2, [5, 10, 20, 30])
         #self.elevator2 = elevator2.Elevator(16, 17, [5, 10, 20, 30])
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
-        self.claw = coral_claw.Coral_claw(20, 18)
-        self.climb = climb.Climber(15, 19)
+        self.claw = coral_claw.Coral_claw(variables.jointMotor, variables.intakeMotor)
+        self.climb = climb.Climber(variables.climbMotor1, variables.climbMotor2)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
         self.navxGyro = navxGyro.Gyro()
@@ -82,7 +82,8 @@ class MyRobot(commands2.TimedCommandRobot):
         # ValueError is thrown if the file does not exist or is invalid
         
         try:
-            self.trajectory = choreo.load_swerve_trajectory("myTraj_15") # 
+            self.trajectory = choreo.load_swerve_trajectory("BlueShelf_1")
+            self.trajectory2 = choreo.load_swerve_trajectory("BlueShelf_2") # 
         except ValueError:
         # If the trajectory is not found, ChoreoLib already prints to DriverStation
             pass
@@ -93,6 +94,9 @@ class MyRobot(commands2.TimedCommandRobot):
         #urcl.start(wpilib.DataLogManager.getLog())
 
         SmartDashboard.putNumber("voltage", 1)
+        SmartDashboard.putNumber("hold", 0.8)
+
+        self.clawSet = False
         
 
     def robotPeriodic(self):
@@ -102,9 +106,18 @@ class MyRobot(commands2.TimedCommandRobot):
     def autonomousInit(self):
         self.swerve.resetGyro()
 
-        follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
-        follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
+        follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(3)
+        elevator3 = commands2.cmd.run(lambda: self.AutoElevator(3)).withTimeout(2)
+        stopFor1 = commands2.cmd.run(lambda: self.StopPath()).withTimeout(1)
+        follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.5)
+
+        stowClaw = commands2.cmd.run(lambda: self.claw.jointMotor_stow()).withTimeout(5)
+        outakeClaw = commands2.cmd.parallel(lambda: self.claw.intakeMotor_release(1), self.claw.jointMotor_stow()).withTimeout(3)
+        stopClaw = commands2.cmd.run(lambda: self.claw.intakeMotor_stop()).withTimeout(0.5)
+        idleClaw = commands2.cmd.run(lambda: self.claw.jointMotor_idle()).withTimeout(3)
+
         stop = commands2.cmd.run(lambda: self.StopPath())
+        reset = commands2.cmd.run(lambda: self.swerve.resetRobotPose(self.trajectory2.get_initial_pose(self.is_red_alliance())))
         
         if self.trajectory:
             # Get the initial pose of the trajectory
@@ -118,7 +131,12 @@ class MyRobot(commands2.TimedCommandRobot):
 
         self.path_command = commands2.SequentialCommandGroup([
             follow1,
-            follow2,
+            stopFor1,
+            #stowClaw,
+            outakeClaw,
+            #stopClaw,
+            idleClaw,
+            #follow2,
             stop
         ])
         self.path_command.schedule()
@@ -135,6 +153,7 @@ class MyRobot(commands2.TimedCommandRobot):
 
         self.field.setRobotPose(self.swerve.odometry.getPose())
 
+        self.claw.jointMotor_stow()
         commands2.CommandScheduler.getInstance().run()
                 
 
@@ -196,40 +215,67 @@ class MyRobot(commands2.TimedCommandRobot):
         
         
         # MAX SET POINT IS AROUND 22.5
-        if self.pad.getRawButton(6) == 1: #down
-            self.setpoint = 3
+        if self.pad.getRawButton(1) == 1:
+            self.setpoint = variables.setpoint0
             self.elevator.start_elevatorMotor(self.setpoint)
-        elif self.pad.getRawButton(9) == 1: #up
-            self.setpoint = 8
+        elif self.pad.getRawButton(2) == 1: #down
+            self.setpoint = variables.setpoint1
+            self.elevator.start_elevatorMotor(self.setpoint)
+        elif self.pad.getRawButton(3) == 1:
+            self.setpoint = variables.setpointStation
+            self.elevator.start_elevatorMotor(self.setpoint)
+        elif self.pad.getRawButton(4) == 1: #up
+            self.setpoint = variables.setpoint2
+            self.elevator.start_elevatorMotor(self.setpoint)
+        elif self.pad.getRawButton(5) == 1:
+            self.setpoint = variables.setpoint3
             self.elevator.start_elevatorMotor(self.setpoint)
         else:
             self.elevator.start_elevatorMotor(self.setpoint)
         
-
         self.voltage = SmartDashboard.getNumber('voltage', 1)
+        self.hold = SmartDashboard.getNumber('hold', 0.8)
 
-        # FOR CLAW
+
+        '''
         if self.pad.getRawButton(5) == 1: # up
             self.claw.jointMotor_up(self.voltage)
         elif self.pad.getRawButton(3) == 1:
             self.claw.jointMotor_down(self.voltage)
         else:
             self.claw.jointMotor_stop()
+        '''
         
-        if self.pad.getRawButton(2) == 1:
-            self.claw.intakeMotor_intaking(self.voltage)
-        elif self.pad.getRawButton(1) == 1:
+        if self.pad.getRawButton(9) == 1: # up
+            self.claw.jointMotor_set(self.voltage)
+        elif self.pad.getRawButton(8) == 1:
+            self.claw.jointMotor_stow()
+        elif self.pad.getRawButton(11) == 1:
+            self.claw.jointMotor_down(1.8) 
+        elif self.pad.getRawButton(10) == 1:
+            self.claw.jointMotor_idle()
+        else:
+            self.claw.jointMotor_hold()
+        
+        #self.claw.jointMotor_stop() 
+        #if self.pad.getRawButton(5) == 1:
+        #    self.claw.jointMotor_set(1)
+
+        if self.pad.getRawButton(6) == 1:
+            self.claw.intakeMotor_intaking(self.voltage)    
+        elif self.pad.getRawButton(7) == 1:
             self.claw.intakeMotor_release(self.voltage)
         else:
             self.claw.intakeMotor_stop()
 
+        '''
         if self.pad.getRawButton(7):
             self.climb.move(self.voltage)
         elif self.pad.getRawButton(10):
             self.climb.move(-self.voltage)
         else:
             self.climb.stop()
-        
+        '''
         '''
         if self.pad.getRawButton(6) == 1: #down
             self.elevator2.start_elevatorMotor(-self.voltage)
@@ -238,6 +284,7 @@ class MyRobot(commands2.TimedCommandRobot):
         else:
             self.elevator2.stop_elevatorMotor()
         '''
+        self.claw.printEncoder()
         
 
     def driveWithJoystick(self, fieldRelative: bool) -> None:
@@ -321,6 +368,8 @@ class MyRobot(commands2.TimedCommandRobot):
         #self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
         self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
     
+    # AUTO FUNCTIONS
+
     def FollowChoreoPath(self, trajectory):
         sample = trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
@@ -329,4 +378,22 @@ class MyRobot(commands2.TimedCommandRobot):
     
     def StopPath(self):
         self.swerve.drive(0, 0, 0, True, self.getPeriod())
+
+    def AutoElevator(self, setpoint):
+        self.elevator.start_elevatorMotor(setpoint)
+        self.setpoint = setpoint
+    
+    def ResetElevator(self):
+        self.elevator.start_elevatorMotor(variables.setpoint0)
+        self.setpoint = variables.setpoint0
+    
+    def release(self, speed):
+        self.claw.intakeMotor_release(speed)
+    
+    def intake(self, speed):
+        self.claw.intakeMotor_intaking(speed)
+
+    def stopIntake(self, speed):
+        self.claw.intakeMotor_stop()
+
         

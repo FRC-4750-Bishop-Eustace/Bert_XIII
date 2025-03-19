@@ -26,6 +26,7 @@ driveFF_1 = 0.06#1.8
 driveFF_2 = 2.5#3
 turnFF_1 = 0 #0.05
 turnFF_2 = 0 #0.45
+
 elevatorPID_P = 5
 elevatorPID_I = 0
 elevatorPID_D = 0 # Dampening for oscillation
@@ -33,6 +34,14 @@ elevatorFF_1 = 0.06#0.24#0.06 # kS: Static friction compensation
 elevatorFF_2 = 0.17#0.34 # kG: Gravity compensation
 elevatorFF_3 = 0.1#0.3#0.34527 # kV: Velocity feedforward
 elevatorFF_4 = 0.005#0.005 # kA: Acceleration feedforward
+
+clawPID_P = 5
+clawPID_I = 0
+clawPID_D = 0 # Dampening for oscillation
+clawFF_1 = 0.06#0.24#0.06 # kS: Static friction compensation
+clawFF_2 = 1#-1.2#0.34 # kG: Gravity compensation
+clawFF_3 = 0.1#0.3#0.34527 # kV: Velocity feedforward
+clawFF_4 = 0.005#0.005 # kA: Acceleration feedforward
 
 
 TurnState = 0
@@ -86,32 +95,25 @@ PSbutton = 13
 shareButton = 9
 optionsButton = 10
 
-# SHOOTER + SHOOTER SPEEDS
-shooter_motor1ID = 16
-shooter_motor2ID = 17
-intake_motor1ID = 13
-intake_motor2ID = 14
-loader_motorID = 15
-climber_motorID = 18
+# ELEVATOR
+elevatorMotor1 = 16
+elevatorMotor2 = 17
+jointMotor = 20
+intakeMotor = 18
 
-intakeSpeedMotor1 = 2
-intakeSpeedMotor2 = -2
-ampSpeedMotor1 = 1
-ampSpeedMotor2 = 2
-shootSpeedMotor1 = -200 #-50
-shootSpeedMotor2 = -200 #-50
-#shootSpeedMotor1 = -1
-#shootSpeedMotor2 = -1
-loaderSpeedMotor = 0.5
+# CANNOT GO 24 OR HIGHER
+setpoint0 = 0
+setpoint1 = 9
+setpoint2 = 16.4
+setpoint3 = 24
+setpointStation = 3.5
 
-reverseShootMotor1 = 3
-reverseShootMotor2 = 3
-reverseLoaderMotor = -0.5
-reverseIntakeMotor1 = -2
-reverseIntakeMotor2 = 2
 
-climbUpSpeed = 10
-climbDownSpeed = -10
+# CLIMB
+climbMotor1 = 15
+climbMotor2 = 19
+
+
 # NEED TO CHANGE THE SHOOTER FUNCTIONS 
 
 def setTurnState(rot) -> None:
