@@ -335,6 +335,13 @@ class Drivetrain:
             ]
         )
     
+    def getAngle(self):
+        return self.angler.getAngle()
+    
+    def setAngle(self, angle):
+        self.angler.reset()
+        self.angler.setAngleAdjustment(angle)
+    
     def getPose(self) -> wpimath.geometry.Pose2d:
         return self.estimator.getEstimatedPosition()
     

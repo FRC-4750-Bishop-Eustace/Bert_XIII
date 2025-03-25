@@ -102,10 +102,11 @@ class Coral_claw:
 
         point3 = 0.9
         point4 = 1
-        speed3 = 0.7
+        speed3 = 0.8
 
-        if point4 > encoderRotation >= 0:
+        if point3 > encoderRotation >= z2:
             self.jointMotor.setVoltage(s2)
+        #elif z2 > encoderRotation >= 0:
         elif point4 >= encoderRotation > point3: # if claw moves to far back it resets to "1"
             self.jointMotor.setVoltage(speed3)
         else:
@@ -129,14 +130,14 @@ class Coral_claw:
 
         encoderRotation = self.jointEncoder.getPosition()
 
-        point1 = 0.1
+        point1 = 0.14
         point2 = 0.2
         point3 = 0.9
         point4 = 1
     
-        speed = -0.2
+        speed = -0.3
         speed2 = -1.6
-        speed3 = 1
+        speed3 = 1.6
         speed4 = 0.2
 
         if point1 < encoderRotation <= point2: # if at point

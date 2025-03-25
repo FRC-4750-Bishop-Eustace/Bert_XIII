@@ -106,7 +106,7 @@ setpoint0 = 0
 setpoint1 = 9
 setpoint2 = 16.4
 setpoint3 = 24
-setpointStation = 3.5
+setpointStation = 2.9
 
 
 # CLIMB
